@@ -1,12 +1,16 @@
 name: IPA (unsigned, for sideloading)
 
-# Build an unsigned Release IPA on GitHub's free macOS runner.
-# No Apple ID, no Mac required — sideload the artifact with SideStore/AltStore,
-# which signs it on-device with a free Apple ID (7-day re-sign).
-# Run: Actions -> "IPA (unsigned, for sideloading)" -> Run workflow -> download the artifact.
+# Build an unsigned Release IPA on GitHub's free macOS runner, then attach it to
+# a release so it can be downloaded without the Actions artifact login.
+# No Apple ID, no Mac required — sideload with SideStore/AltStore (free Apple ID, 7-day re-sign).
 
 on:
   workflow_dispatch:
+  push:
+    paths: [.github/workflows/ipa.yml]
+
+permissions:
+  contents: write  # for the release upload step
 
 jobs:
   build:
@@ -41,3 +45,12 @@ jobs:
           name: IPhoneAgent-unsigned-ipa
           path: ios/IPhoneAgent-unsigned.ipa
           retention-days: 7
+
+      - name: Attach IPA to a release (downloadable without login)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ipa-r${{ github.run_number }}
+          name: Unsigned IPA build ${{ github.run_number }}
+          body: Unsigned IPhoneAgent IPA for SideStore/AltStore sideloading. Sign on-device with a free Apple ID (7-day re-sign).
+          files: ios/IPhoneAgent-unsigned.ipa
+          prerelease: true
