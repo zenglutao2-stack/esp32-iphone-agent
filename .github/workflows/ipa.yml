@@ -1,0 +1,43 @@
+name: IPA (unsigned, for sideloading)
+
+# Build an unsigned Release IPA on GitHub's free macOS runner.
+# No Apple ID, no Mac required — sideload the artifact with SideStore/AltStore,
+# which signs it on-device with a free Apple ID (7-day re-sign).
+# Run: Actions -> "IPA (unsigned, for sideloading)" -> Run workflow -> download the artifact.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: ios
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate the Xcode project
+        run: xcodegen
+
+      - name: Build unsigned (app + widget extension)
+        run: |
+          xcodebuild -project IPhoneAgent.xcodeproj -scheme IPhoneAgent \
+            -configuration Release -destination "generic/platform=iOS" \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+
+      - name: Package IPA (Payload/IPhoneAgent.app zipped, unsigned)
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/IPhoneAgent.app Payload/
+          zip -qr IPhoneAgent-unsigned.ipa Payload
+          ls -la IPhoneAgent-unsigned.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IPhoneAgent-unsigned-ipa
+          path: ios/IPhoneAgent-unsigned.ipa
+          retention-days: 7
